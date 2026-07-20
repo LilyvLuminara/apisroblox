@@ -5,47 +5,53 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware agar website/game kamu bisa mengakses server ini
 app.use(cors());
 
-// Rute utama untuk testing (supaya tidak error Cannot GET /)
+// Halaman utama buat tes
 app.get('/', (req, res) => {
-    res.send('Server Proxy Roblox Aktif! Gunakan /search?q=keyword untuk mencari.');
+    res.send('Proxy Toolbox Service Aktif!');
 });
 
-// Rute pencarian model
+// Rute Search Baru sesuai API pilihanmu
 app.get('/search', async (req, res) => {
     const query = req.query.q;
-    
     if (!query) return res.status(400).send("Masukkan parameter 'q'");
 
     try {
-        // Menggunakan Catalog API Resmi Roblox
-        const response = await axios.get(`https://catalog.roblox.com/v1/search/items`, {
+        // Menembak API pilihanmu lewat server Vercel (Bypass Blocked)
+        const response = await axios.get('https://apis.roblox.com/toolbox-service/v2/assets:search', {
             params: {
-                keyword: query,
-                category: "FreeModels",
-                limit: 10
+                searchCategoryType: 'Model',
+                query: query,
+                maxPageSize: 20
             },
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'Accept': 'application/json'
             }
         });
 
-        const items = response.data.data || [];
-        const formattedData = items.map(item => ({
-            Name: item.name,
-            Id: item.id
-        }));
+        // Ambil data array dari "data" bawaan Roblox
+        const rawItems = response.data.data || [];
+        
+        // Bungkus ulang agar formatnya seragam & gampang dibaca oleh script Roblox
+        const formattedData = rawItems.map(item => {
+            if (item.asset) {
+                return {
+                    name: item.asset.name || "Unknown Model",
+                    id: item.asset.id
+                };
+            }
+            return null;
+        }).filter(item => item !== null);
 
         res.json(formattedData);
     } catch (error) {
-        console.error(error);
-        res.status(500).send("Error saat mengambil data dari API");
+        console.error(error.message);
+        res.status(500).send("Error saat mengambil data dari Toolbox API");
     }
 });
 
 app.listen(port, () => {
-    console.log(`Server berjalan di port ${port}`);
+    console.log(`Server running on port ${port}`);
 });
