@@ -7,8 +7,9 @@ app.use(cors());
 
 app.get('/search', async (req, res) => {
     const query = req.query.q;
+    if (!query) return res.status(400).send("Masukkan keyword!");
+
     try {
-        // MENAMBAHKAN HEADERS PENTING DISINI
         const response = await axios.get('https://apis.roblox.com/toolbox-service/v2/assets:search', {
             params: {
                 searchCategoryType: 'Model',
@@ -16,18 +17,24 @@ app.get('/search', async (req, res) => {
                 maxPageSize: 20
             },
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'Referer': 'https://www.roblox.com/',
                 'Origin': 'https://www.roblox.com'
             }
         });
 
-        // Mengirimkan data jika berhasil
-        res.json(response.data.data.map(item => ({
-            name: item.asset.name,
-            id: item.asset.id
-        })));
+        // PERBAIKAN DI SINI: Kita tambahkan pengecekan apakah response.data dan response.data.data ada
+        const items = (response.data && response.data.data) ? response.data.data : [];
+
+        // Kalau items kosong, kita kirim array kosong biar Roblox tidak crash
+        const formattedData = items.map(item => ({
+            name: item.asset ? item.asset.name : "Unknown",
+            id: item.asset ? item.asset.id : null
+        }));
+
+        res.json(formattedData);
     } catch (error) {
+        console.error("Detail Error:", error.message);
         res.status(500).send("Error API: " + error.message);
     }
 });
