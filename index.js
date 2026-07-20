@@ -7,35 +7,24 @@ app.use(cors());
 
 app.get('/search', async (req, res) => {
     const query = req.query.q;
-    if (!query) return res.status(400).send("Masukkan keyword!");
+    if (!query) return res.status(400).send("Masukkan parameter q");
 
     try {
-        const response = await axios.get('https://apis.roblox.com/toolbox-service/v2/assets:search', {
-            params: {
-                searchCategoryType: 'Model',
-                query: query,
-                maxPageSize: 20
-            },
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Referer': 'https://www.roblox.com/',
-                'Origin': 'https://www.roblox.com'
-            }
-        });
+        // Kita gunakan roproxy.com agar tidak diblokir oleh Roblox
+        const url = `https://apis.roproxy.com/toolbox-service/v2/assets:search?searchCategoryType=Model&query=${encodeURIComponent(query)}&maxPageSize=20`;
+        
+        const response = await axios.get(url);
 
-        // PERBAIKAN DI SINI: Kita tambahkan pengecekan apakah response.data dan response.data.data ada
-        const items = (response.data && response.data.data) ? response.data.data : [];
-
-        // Kalau items kosong, kita kirim array kosong biar Roblox tidak crash
-        const formattedData = items.map(item => ({
-            name: item.asset ? item.asset.name : "Unknown",
-            id: item.asset ? item.asset.id : null
+        // Memproses data agar bersih untuk script kamu
+        const items = response.data.data || [];
+        const result = items.map(item => ({
+            name: item.asset.name,
+            id: item.asset.id
         }));
 
-        res.json(formattedData);
+        res.json(result);
     } catch (error) {
-        console.error("Detail Error:", error.message);
-        res.status(500).send("Error API: " + error.message);
+        res.status(500).send("Error: " + error.message);
     }
 });
 
