@@ -1,21 +1,14 @@
- const express = require('express');
+const express = require('express');
 const axios = require('axios');
-const cors = require('cors'); // Tambahkan ini agar tidak kena CORS error
-
+const cors = require('cors');
 const app = express();
-app.use(cors()); // Mengizinkan akses dari luar (Roblox)
 
-// Rute utama agar tidak 404 saat dibuka di browser
-app.get('/', (req, res) => {
-    res.send('Proxy Toolbox Service Aktif!');
-});
+app.use(cors());
 
-// Rute pencarian
 app.get('/search', async (req, res) => {
     const query = req.query.q;
-    if (!query) return res.status(400).send("Masukkan parameter 'q'");
-
     try {
+        // MENAMBAHKAN HEADERS PENTING DISINI
         const response = await axios.get('https://apis.roblox.com/toolbox-service/v2/assets:search', {
             params: {
                 searchCategoryType: 'Model',
@@ -23,24 +16,20 @@ app.get('/search', async (req, res) => {
                 maxPageSize: 20
             },
             headers: {
-                'User-Agent': 'Mozilla/5.0' // Membantu agar tidak dianggap bot oleh Roblox
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Referer': 'https://www.roblox.com/',
+                'Origin': 'https://www.roblox.com'
             }
         });
 
-        // Modifikasi data agar formatnya bersih untuk Roblox
-        const rawItems = response.data.data || [];
-        const formattedData = rawItems.map(item => ({
-            name: item.asset?.name || "Unknown",
-            id: item.asset?.id
-        }));
-
-        res.json(formattedData); 
+        // Mengirimkan data jika berhasil
+        res.json(response.data.data.map(item => ({
+            name: item.asset.name,
+            id: item.asset.id
+        })));
     } catch (error) {
-        console.error(error.message);
-        res.status(500).send(error.message);
+        res.status(500).send("Error API: " + error.message);
     }
 });
 
-// Vercel tidak membutuhkan app.listen(3000) secara manual, 
-// tapi Vercel akan menangkap app sebagai export default
 module.exports = app;
