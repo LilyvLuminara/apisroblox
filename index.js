@@ -1,24 +1,21 @@
-const express = require('express');
+ const express = require('express');
 const axios = require('axios');
-const cors = require('cors');
+const cors = require('cors'); // Tambahkan ini agar tidak kena CORS error
 
 const app = express();
-const port = process.env.PORT || 3000;
+app.use(cors()); // Mengizinkan akses dari luar (Roblox)
 
-app.use(cors());
-
-// Halaman utama buat tes
+// Rute utama agar tidak 404 saat dibuka di browser
 app.get('/', (req, res) => {
     res.send('Proxy Toolbox Service Aktif!');
 });
 
-// Rute Search Baru sesuai API pilihanmu
+// Rute pencarian
 app.get('/search', async (req, res) => {
     const query = req.query.q;
     if (!query) return res.status(400).send("Masukkan parameter 'q'");
 
     try {
-        // Menembak API pilihanmu lewat server Vercel (Bypass Blocked)
         const response = await axios.get('https://apis.roblox.com/toolbox-service/v2/assets:search', {
             params: {
                 searchCategoryType: 'Model',
@@ -26,32 +23,24 @@ app.get('/search', async (req, res) => {
                 maxPageSize: 20
             },
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'application/json'
+                'User-Agent': 'Mozilla/5.0' // Membantu agar tidak dianggap bot oleh Roblox
             }
         });
 
-        // Ambil data array dari "data" bawaan Roblox
+        // Modifikasi data agar formatnya bersih untuk Roblox
         const rawItems = response.data.data || [];
-        
-        // Bungkus ulang agar formatnya seragam & gampang dibaca oleh script Roblox
-        const formattedData = rawItems.map(item => {
-            if (item.asset) {
-                return {
-                    name: item.asset.name || "Unknown Model",
-                    id: item.asset.id
-                };
-            }
-            return null;
-        }).filter(item => item !== null);
+        const formattedData = rawItems.map(item => ({
+            name: item.asset?.name || "Unknown",
+            id: item.asset?.id
+        }));
 
-        res.json(formattedData);
+        res.json(formattedData); 
     } catch (error) {
         console.error(error.message);
-        res.status(500).send("Error saat mengambil data dari Toolbox API");
+        res.status(500).send(error.message);
     }
 });
 
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-});
+// Vercel tidak membutuhkan app.listen(3000) secara manual, 
+// tapi Vercel akan menangkap app sebagai export default
+module.exports = app;
