@@ -1,29 +1,51 @@
 const express = require('express');
 const axios = require('axios');
-const app = express();
-const PORT = process.env.PORT || 3000;
+const cors = require('cors');
 
+const app = express();
+const port = process.env.PORT || 3000;
+
+// Middleware agar website/game kamu bisa mengakses server ini
+app.use(cors());
+
+// Rute utama untuk testing (supaya tidak error Cannot GET /)
+app.get('/', (req, res) => {
+    res.send('Server Proxy Roblox Aktif! Gunakan /search?q=keyword untuk mencari.');
+});
+
+// Rute pencarian model
 app.get('/search', async (req, res) => {
-    const query = req.query.q; // Ambil parameter pencarian
+    const query = req.query.q;
     
     if (!query) return res.status(400).send("Masukkan parameter 'q'");
 
     try {
-        // Melakukan request ke Roblox API
-        const response = await axios.get(`https://apis.roblox.com/toolbox-service/v2/assets:search`, {
-            params: { q: query, limit: 10 },
+        // Menggunakan Catalog API Resmi Roblox
+        const response = await axios.get(`https://catalog.roblox.com/v1/search/items`, {
+            params: {
+                keyword: query,
+                category: "FreeModels",
+                limit: 10
+            },
             headers: {
-                'User-Agent': 'RobloxProxy/1.0', // Header penting agar tidak dianggap bot
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
                 'Accept': 'application/json'
             }
         });
 
-        // Mengirim data balik ke script Roblox kamu
-        res.json(response.data);
+        const items = response.data.data || [];
+        const formattedData = items.map(item => ({
+            Name: item.name,
+            Id: item.id
+        }));
+
+        res.json(formattedData);
     } catch (error) {
-        res.status(500).send("Error saat mengambil data dari Roblox API");
+        console.error(error);
+        res.status(500).send("Error saat mengambil data dari API");
     }
 });
 
-app.listen(PORT, () => console.log(`Proxy running on port ${PORT}`));
-
+app.listen(port, () => {
+    console.log(`Server berjalan di port ${port}`);
+});
